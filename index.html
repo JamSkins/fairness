@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Provably Fair Calculator</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎲 Provably Fair Calculator</h1>
+            <p>Verify the fairness of game results using cryptographic proofs</p>
+            <div class="url-info">
+                <small>💡 <strong>Tip:</strong> Share your calculations with others using URLs! Use 🔗 Share URL button or access directly: 
+                <code>#dice</code>, <code>#wheel</code>, <code>#mines</code>, <code>#cases</code>, <code>#code</code></small>
+            </div>
+        </header>
+
+        <nav class="tabs">
+            <button class="tab-button active" data-tab="dice">🎲 Dice</button>
+            <button class="tab-button" data-tab="wheel">🎡 Wheel</button>
+            <button class="tab-button" data-tab="mines">💣 Mines</button>
+            <button class="tab-button" data-tab="cases">📦 Cases</button>
+            <button class="tab-button" data-tab="code">📄 Code</button>
+        </nav>
+
+        <!-- Dice Calculator -->
+        <div id="dice" class="tab-content active">
+            <div class="game-section">
+                <h2>🎲 Dice Fairness Verification</h2>
+                <p>Dice game generates a number from 1 to 100</p>
+                
+                <form id="diceForm" class="fairness-form">
+                    <div class="input-group">
+                        <label for="diceClientSeed">Client Seed:</label>
+                        <input type="text" id="diceClientSeed" placeholder="Enter client seed" required>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="diceServerSeed">Server Seed:</label>
+                        <input type="text" id="diceServerSeed" placeholder="Enter server seed" required>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="diceNonce">Nonce:</label>
+                        <input type="number" id="diceNonce" placeholder="Enter nonce" required>
+                    </div>
+                    
+                    <button type="submit" class="calculate-btn">Calculate Result</button>
+                </form>
+                
+                <div id="diceResult" class="result-section"></div>
+            </div>
+        </div>
+
+        <!-- Wheel Calculator -->
+        <div id="wheel" class="tab-content">
+            <div class="game-section">
+                <h2>🎡 Wheel Fairness Verification</h2>
+                <p>Wheel game generates a sector number based on total sectors count</p>
+                
+                <form id="wheelForm" class="fairness-form">
+                    <div class="input-group">
+                        <label for="wheelSessionId">Session ID (Client Seed):</label>
+                        <input type="text" id="wheelSessionId" placeholder="Enter session ID" required>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="wheelServerSeed">Server Seed:</label>
+                        <input type="text" id="wheelServerSeed" placeholder="Enter server seed" required>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="wheelSectorsCount">Sectors Count:</label>
+                        <input type="number" id="wheelSectorsCount" placeholder="Enter number of sectors" required>
+                    </div>
+                    
+                    <button type="submit" class="calculate-btn">Calculate Result</button>
+                </form>
+                
+                <div id="wheelResult" class="result-section"></div>
+            </div>
+        </div>
+
+        <!-- Mines Calculator -->
+        <div id="mines" class="tab-content">
+            <div class="game-section">
+                <h2>💣 Mines Fairness Verification</h2>
+                <p>Mines game generates mine positions on a grid</p>
+                
+                <form id="minesForm" class="fairness-form">
+                    <div class="input-group">
+                        <label for="minesClientSeed">Client Seed:</label>
+                        <input type="text" id="minesClientSeed" placeholder="Enter client seed" required>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="minesServerSeed">Server Seed:</label>
+                        <input type="text" id="minesServerSeed" placeholder="Enter server seed" required>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="minesNonce">Nonce:</label>
+                        <input type="number" id="minesNonce" placeholder="Enter nonce" required>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="minesGridSize">Grid Size:</label>
+                        <input type="number" id="minesGridSize" placeholder="Enter grid size (e.g., 25 for 5x5)" required>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="minesMinesCount">Mines Count:</label>
+                        <input type="number" id="minesMinesCount" placeholder="Enter number of mines" required>
+                    </div>
+                    
+                    <button type="submit" class="calculate-btn">Calculate Result</button>
+                </form>
+                
+                <div id="minesResult" class="result-section"></div>
+            </div>
+        </div>
+
+        <!-- Cases Calculator -->
+        <div id="cases" class="tab-content">
+            <div class="game-section">
+                <h2>📦 Cases Fairness Verification</h2>
+                <p>Cases game generates a number within the total range of items</p>
+                
+                <form id="casesForm" class="fairness-form">
+                    <div class="input-group">
+                        <label for="casesClientSeed">Client Seed:</label>
+                        <input type="text" id="casesClientSeed" placeholder="Enter client seed" required>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="casesServerSeed">Server Seed:</label>
+                        <input type="text" id="casesServerSeed" placeholder="Enter server seed" required>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="casesNonce">Nonce:</label>
+                        <input type="number" id="casesNonce" placeholder="Enter nonce" required>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="casesTotalRange">Total Range:</label>
+                        <input type="number" id="casesTotalRange" placeholder="Enter total range (default: 2000)" value="2000" required>
+                    </div>
+                    
+                    <button type="submit" class="calculate-btn">Calculate Result</button>
+                </form>
+                
+                <div id="casesResult" class="result-section"></div>
+            </div>
+        </div>
+
+        <!-- Code Editor -->
+        <div id="code" class="tab-content">
+            <div class="game-section">
+                <h2>📄 Algorithm Source Code</h2>
+                <p>View and modify the provably fair algorithm functions. Changes will be applied immediately.</p>
+                
+                <div class="code-controls">
+                    <button class="calculate-btn" onclick="resetToOriginalCode()">Reset to Original</button>
+                    <button class="calculate-btn" onclick="updateFunctions()" style="background: #28a745;">Apply Changes</button>
+                    <button class="calculate-btn" onclick="exportCode()" style="background: #6c757d;">Export Code</button>
+                </div>
+
+                <div class="function-tabs">
+                    <button class="function-tab-button active" data-function="main">Core Functions</button>
+                    <button class="function-tab-button" data-function="crypto">Crypto Functions</button>
+                    <button class="function-tab-button" data-function="games">Game Functions</button>
+                </div>
+
+                <!-- Core Functions -->
+                <div id="main" class="function-content active">
+                    <h3>🔢 Core Cryptographic Utilities</h3>
+                    <div class="code-section">
+                        <label for="coreCode">Core Functions (createHmac, readUInt32BE):</label>
+                        <textarea id="coreCode" class="code-editor" rows="25"></textarea>
+                    </div>
+                </div>
+
+                <!-- Crypto Functions -->
+                <div id="crypto" class="function-content">
+                    <h3>🔐 Random Number Generation</h3>
+                    <div class="code-section">
+                        <label for="cryptoCode">Random Functions (getNumberFromRange, getUniqueNumbersFromRange, getHashBySeed):</label>
+                        <textarea id="cryptoCode" class="code-editor" rows="25"></textarea>
+                    </div>
+                </div>
+
+                <!-- Game Functions -->
+                <div id="games" class="function-content">
+                    <h3>🎮 Game-Specific Functions</h3>
+                    <div class="code-section">
+                        <label for="gamesCode">Game Functions (calculateDiceResult, calculateWheelResult, etc.):</label>
+                        <textarea id="gamesCode" class="code-editor" rows="25"></textarea>
+                    </div>
+                </div>
+
+                <div class="code-info">
+                    <h3>ℹ️ Function Usage</h3>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <strong>Core Functions:</strong> Low-level cryptographic utilities (HMAC, buffer operations)
+                        </div>
+                        <div class="info-item">
+                            <strong>Crypto Functions:</strong> Main random number generation and hash algorithms
+                        </div>
+                        <div class="info-item">
+                            <strong>Game Functions:</strong> Game-specific wrappers that call crypto functions
+                        </div>
+                    </div>
+                </div>
+
+                <div class="warning-box">
+                    <h3>⚠️ Important Notes</h3>
+                    <ul>
+                        <li>Changes are applied immediately when you click "Apply Changes"</li>
+                        <li>Invalid JavaScript will cause errors - use browser console to debug</li>
+                        <li>The original backend TypeScript functions are provided as reference</li>
+                        <li>Refresh the page to revert all changes</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="provably-fair.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

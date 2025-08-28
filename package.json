@@ -1,0 +1,48 @@
+{
+  "name": "provably-fair-calculator",
+  "version": "1.0.0",
+  "description": "Standalone JavaScript implementation for verifying the fairness of game results using cryptographic proofs",
+  "main": "index.html",
+  "scripts": {
+    "start": "python3 -m http.server 8080",
+    "start:node": "npx http-server -p 8080",
+    "start:php": "php -S localhost:8080",
+    "build": "echo 'No build step required - pure HTML/CSS/JS'"
+  },
+  "keywords": [
+    "provably-fair",
+    "cryptography",
+    "gambling",
+    "fairness",
+    "verification",
+    "dice",
+    "wheel",
+    "mines",
+    "cases",
+    "hmac",
+    "sha256"
+  ],
+  "author": "SweepTech",
+  "license": "ISC",
+  "devDependencies": {},
+  "dependencies": {},
+  "files": [
+    "index.html",
+    "styles.css",
+    "app.js",
+    "provably-fair.js",
+    "package.json",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sweeptech/provably-fair-calculator"
+  },
+  "bugs": {
+    "url": "https://github.com/sweeptech/provably-fair-calculator/issues"
+  },
+  "homepage": "https://sweeptech.github.io/provably-fair-calculator"
+}

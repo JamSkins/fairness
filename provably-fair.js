@@ -202,10 +202,10 @@ async function getHashBySeed(seed) {
     
     if (typeof CryptoJS !== 'undefined') {
         // Use crypto-js if available
-        return CryptoJS.HmacSHA256(seed + salt, seed).toString();
+        return CryptoJS.HmacSHA256('', seed + salt).toString();
     } else {
         // Use Web Crypto API
-        const digest = await createHmac(seed, seed + salt);
+        const digest = await createHmac(seed + salt, '');
         const hashArray = Array.from(new Uint8Array(digest));
         return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
     }

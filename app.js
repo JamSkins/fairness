@@ -700,7 +700,7 @@ function bufferToUint8Array(buffer) {
      */
     getEmbeddedGamesFunctions() {
         return `/**
- * Calculate Dice game result (number from 0.00 to 100.00)
+ * Calculate Dice game result (number from 0.0000 to 100.0000)
  * @param {string} clientSeed - Client seed
  * @param {string} serverSeed - Server seed
  * @param {number} nonce - Nonce value
@@ -708,14 +708,14 @@ function bufferToUint8Array(buffer) {
  */
 async function calculateDiceResult(clientSeed, serverSeed, nonce) {
     const rawNumber = await getNumberFromRange({
-        rng: [0, 10000],
+        rng: [0, 1000000],
         serverSeed,
         nonce,
         clientSeed,
     });
     
-    // Convert from 0-10000 to 0.00-100.00
-    const winNumber = (rawNumber / 100).toFixed(2);
+    // Convert from 0-1000000 to 0.0000-100.0000
+    const winNumber = (rawNumber / 10000).toFixed(4);
     
     const hash = await getHashBySeed(serverSeed);
     

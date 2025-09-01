@@ -224,7 +224,7 @@ async function getHashBySeed(seed) {
  */
 async function calculateDiceResult(clientSeed, serverSeed, nonce) {
     const winNumber = await getNumberFromRange({
-        rng: [1, 100],
+        rng: [1, 10000],
         serverSeed,
         nonce,
         clientSeed,

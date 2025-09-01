@@ -700,24 +700,27 @@ function bufferToUint8Array(buffer) {
      */
     getEmbeddedGamesFunctions() {
         return `/**
- * Calculate Dice game result (number from 1 to 100)
+ * Calculate Dice game result (number from 0.00 to 100.00)
  * @param {string} clientSeed - Client seed
  * @param {string} serverSeed - Server seed
  * @param {number} nonce - Nonce value
  * @returns {Promise<Object>} - Result object with winNumber and hash
  */
 async function calculateDiceResult(clientSeed, serverSeed, nonce) {
-    const winNumber = await getNumberFromRange({
-        rng: [1, 100],
+    const rawNumber = await getNumberFromRange({
+        rng: [0, 10000],
         serverSeed,
         nonce,
         clientSeed,
     });
     
+    // Convert from 0-10000 to 0.00-100.00
+    const winNumber = (rawNumber / 100).toFixed(2);
+    
     const hash = await getHashBySeed(serverSeed);
     
     return {
-        winNumber,
+        winNumber: parseFloat(winNumber),
         hash,
     };
 }
@@ -1142,5 +1145,3 @@ window.ProvablyFair = {
 document.addEventListener('DOMContentLoaded', () => {
     window.provablyFairCalculatorInstance = new ProvablyFairCalculator();
 });
-
-

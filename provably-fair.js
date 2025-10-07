@@ -314,12 +314,39 @@ async function calculateCasesResult(clientSeed, serverSeed, nonce, totalRange = 
     };
 }
 
+/**
+ * Calculate Upgrader game result (upgrade success percentage from 0.0000 to 100.0000)
+ * @param {string} clientSeed - Client seed
+ * @param {string} serverSeed - Server seed
+ * @param {number} nonce - Nonce value
+ * @returns {Promise<Object>} - Result object with upgradeChance and hash
+ */
+async function calculateUpgraderResult(clientSeed, serverSeed, nonce) {
+    const rawNumber = await getNumberFromRange({
+        rng: [0, 1000000],
+        serverSeed,
+        nonce,
+        clientSeed,
+    });
+    
+    // Convert from 0-1000000 to 0.0000-100.0000 (identical to Dice logic)
+    const upgradeChance = (rawNumber / 10000).toFixed(4);
+    
+    const hash = await getHashBySeed(serverSeed);
+    
+    return {
+        upgradeChance: parseFloat(upgradeChance),
+        hash,
+    };
+}
+
 // Make functions available globally
 window.ProvablyFair = {
     calculateDiceResult,
     calculateWheelResult,
     calculateMinesResult,
     calculateCasesResult,
+    calculateUpgraderResult,
     getHashBySeed,
     getNumberFromRange,
     getUniqueNumbersFromRange,

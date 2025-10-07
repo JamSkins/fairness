@@ -13,7 +13,7 @@
             <p>Verify the fairness of game results using cryptographic proofs</p>
             <div class="url-info">
                 <small>💡 <strong>Tip:</strong> Share your calculations with others using URLs! Use 🔗 Share URL button or access directly: 
-                <code>#dice</code>, <code>#wheel</code>, <code>#mines</code>, <code>#cases</code>, <code>#code</code></small>
+                <code>#dice</code>, <code>#wheel</code>, <code>#mines</code>, <code>#cases</code>, <code>#upgrader</code>, <code>#code</code></small>
             </div>
         </header>
 
@@ -22,6 +22,7 @@
             <button class="tab-button" data-tab="wheel">🎡 Wheel</button>
             <button class="tab-button" data-tab="mines">💣 Mines</button>
             <button class="tab-button" data-tab="cases">📦 Cases</button>
+            <button class="tab-button" data-tab="upgrader">🔫 Upgrader</button>
             <button class="tab-button" data-tab="code">📄 Code</button>
         </nav>
 
@@ -153,6 +154,35 @@
                 </form>
                 
                 <div id="casesResult" class="result-section"></div>
+            </div>
+        </div>
+
+        <!-- Upgrader Calculator -->
+        <div id="upgrader" class="tab-content">
+            <div class="game-section">
+                <h2>🔫 Upgrader Fairness Verification</h2>
+                <p>Upgrader generates a weapon upgrade success chance from 0.0000 to 100.0000% (with ten-thousandths precision)</p>
+                
+                <form id="upgraderForm" class="fairness-form">
+                    <div class="input-group">
+                        <label for="upgraderClientSeed">Client Seed:</label>
+                        <input type="text" id="upgraderClientSeed" placeholder="Enter client seed" required>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="upgraderServerSeed">Server Seed:</label>
+                        <input type="text" id="upgraderServerSeed" placeholder="Enter server seed" required>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="upgraderNonce">Nonce:</label>
+                        <input type="number" id="upgraderNonce" placeholder="Enter nonce" required>
+                    </div>
+                    
+                    <button type="submit" class="calculate-btn">Calculate Upgrade Chance</button>
+                </form>
+                
+                <div id="upgraderResult" class="result-section"></div>
             </div>
         </div>
 

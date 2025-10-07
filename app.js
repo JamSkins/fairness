@@ -51,6 +51,10 @@ class ProvablyFairCalculator {
         // Cases form
         const casesForm = document.getElementById('casesForm');
         casesForm.addEventListener('submit', (e) => this.handleCasesSubmit(e));
+
+        // Upgrader form
+        const upgraderForm = document.getElementById('upgraderForm');
+        upgraderForm.addEventListener('submit', (e) => this.handleUpgraderSubmit(e));
     }
 
     /**
@@ -62,6 +66,7 @@ class ProvablyFairCalculator {
         this.addSampleDataButton('wheelForm', this.getWheelSampleData());
         this.addSampleDataButton('minesForm', this.getMinesSampleData());
         this.addSampleDataButton('casesForm', this.getCasesSampleData());
+        this.addSampleDataButton('upgraderForm', this.getUpgraderSampleData());
     }
 
     /**
@@ -150,6 +155,14 @@ class ProvablyFairCalculator {
             casesServerSeed: 'd4e5f6789012345678901234567890abcdef1234567890abcdef1234567ab2c3',
             casesNonce: '3',
             casesTotalRange: '2000'
+        };
+    }
+
+    getUpgraderSampleData() {
+        return {
+            upgraderClientSeed: 'csgo_player',
+            upgraderServerSeed: 'e5f6789012345678901234567890abcdef1234567890abcdef1234567ab2c3d4',
+            upgraderNonce: '4'
         };
     }
 
@@ -256,6 +269,31 @@ class ProvablyFairCalculator {
             this.displayCasesResult(result);
         } catch (error) {
             this.displayError('casesResult', error.message);
+        } finally {
+            this.setLoading(form, false);
+        }
+    }
+
+    /**
+     * Handle upgrader form submission
+     */
+    async handleUpgraderSubmit(e) {
+        e.preventDefault();
+        
+        const form = e.target;
+        const clientSeed = form.querySelector('#upgraderClientSeed').value;
+        const serverSeed = form.querySelector('#upgraderServerSeed').value;
+        const nonce = parseInt(form.querySelector('#upgraderNonce').value);
+        
+        if (!this.validateInputs([clientSeed, serverSeed], [nonce])) return;
+        
+        this.setLoading(form, true);
+        
+        try {
+            const result = await window.ProvablyFair.calculateUpgraderResult(clientSeed, serverSeed, nonce);
+            this.displayUpgraderResult(result);
+        } catch (error) {
+            this.displayError('upgraderResult', error.message);
         } finally {
             this.setLoading(form, false);
         }
@@ -401,6 +439,27 @@ class ProvablyFairCalculator {
             <div class="result-item">
                 <div class="result-label">Random Number</div>
                 <div class="result-value number">${result.result}</div>
+            </div>
+            <div class="result-item">
+                <div class="result-label">Server Seed Hash</div>
+                <div class="result-value">${result.hash}</div>
+            </div>
+        `;
+        
+        resultSection.classList.add('show');
+        resultSection.classList.remove('error');
+    }
+
+    /**
+     * Display upgrader game result
+     */
+    displayUpgraderResult(result) {
+        const resultSection = document.getElementById('upgraderResult');
+        
+        resultSection.innerHTML = `
+            <div class="result-item">
+                <div class="result-label">Upgrade Chance</div>
+                <div class="result-value number">${result.upgradeChance}%</div>
             </div>
             <div class="result-item">
                 <div class="result-label">Server Seed Hash</div>
@@ -796,6 +855,32 @@ async function calculateCasesResult(clientSeed, serverSeed, nonce, totalRange = 
         result,
         hash,
     };
+}
+
+/**
+ * Calculate Upgrader game result (upgrade success percentage from 0.0000 to 100.0000)
+ * @param {string} clientSeed - Client seed
+ * @param {string} serverSeed - Server seed
+ * @param {number} nonce - Nonce value
+ * @returns {Promise<Object>} - Result object with upgradeChance and hash
+ */
+async function calculateUpgraderResult(clientSeed, serverSeed, nonce) {
+    const rawNumber = await getNumberFromRange({
+        rng: [0, 1000000],
+        serverSeed,
+        nonce,
+        clientSeed,
+    });
+    
+    // Convert from 0-1000000 to 0.0000-100.0000 (identical to Dice logic)
+    const upgradeChance = (rawNumber / 10000).toFixed(4);
+    
+    const hash = await getHashBySeed(serverSeed);
+    
+    return {
+        upgradeChance: parseFloat(upgradeChance),
+        hash,
+    };
 }`;
     }
 
@@ -831,7 +916,7 @@ async function calculateCasesResult(clientSeed, serverSeed, nonce, totalRange = 
         const [tab, params] = hash.split('?');
         
         // Switch to tab if specified
-        if (tab && ['dice', 'wheel', 'mines', 'cases', 'code'].includes(tab)) {
+        if (tab && ['dice', 'wheel', 'mines', 'cases', 'upgrader', 'code'].includes(tab)) {
             this.switchToTab(tab, false); // Don't update URL to avoid loop
         }
         
@@ -899,6 +984,9 @@ async function calculateCasesResult(clientSeed, serverSeed, nonce, totalRange = 
                 case 'cases':
                     this.fillCasesForm(params);
                     break;
+                case 'upgrader':
+                    this.fillUpgraderForm(params);
+                    break;
             }
         } catch (error) {
             console.warn('Failed to parse URL parameters:', error);
@@ -964,6 +1052,19 @@ async function calculateCasesResult(clientSeed, serverSeed, nonce, totalRange = 
     }
 
     /**
+     * Fill upgrader form from URL parameters
+     */
+    fillUpgraderForm(params) {
+        const clientSeed = params.get('clientSeed');
+        const serverSeed = params.get('serverSeed');
+        const nonce = params.get('nonce');
+        
+        if (clientSeed) document.getElementById('upgraderClientSeed').value = clientSeed;
+        if (serverSeed) document.getElementById('upgraderServerSeed').value = serverSeed;
+        if (nonce) document.getElementById('upgraderNonce').value = nonce;
+    }
+
+    /**
      * Get form parameters as URL search string
      */
     getFormParams(tab) {
@@ -1016,6 +1117,16 @@ async function calculateCasesResult(clientSeed, serverSeed, nonce, totalRange = 
                     if (casesNonce) params.set('nonce', casesNonce);
                     if (casesTotalRange) params.set('totalRange', casesTotalRange);
                     break;
+                    
+                case 'upgrader':
+                    const upgraderClientSeed = document.getElementById('upgraderClientSeed').value;
+                    const upgraderServerSeed = document.getElementById('upgraderServerSeed').value;
+                    const upgraderNonce = document.getElementById('upgraderNonce').value;
+                    
+                    if (upgraderClientSeed) params.set('clientSeed', upgraderClientSeed);
+                    if (upgraderServerSeed) params.set('serverSeed', upgraderServerSeed);
+                    if (upgraderNonce) params.set('nonce', upgraderNonce);
+                    break;
             }
             
             return params.toString();
@@ -1067,6 +1178,7 @@ function updateFunctions() {
                 calculateWheelResult,
                 calculateMinesResult,
                 calculateCasesResult,
+                calculateUpgraderResult,
                 getHashBySeed,
                 getNumberFromRange,
                 getUniqueNumbersFromRange,
@@ -1122,6 +1234,7 @@ window.ProvablyFair = {
     calculateWheelResult,
     calculateMinesResult,
     calculateCasesResult,
+    calculateUpgraderResult,
     getHashBySeed,
     getNumberFromRange,
     getUniqueNumbersFromRange,

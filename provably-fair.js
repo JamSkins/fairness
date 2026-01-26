@@ -300,7 +300,7 @@ async function calculateMinesResult(clientSeed, serverSeed, nonce, gridSize, min
  */
 async function calculateCasesResult(clientSeed, serverSeed, nonce, totalRange = 2000) {
     const result = await getNumberFromRange({
-        rng: [0, totalRange],
+        rng: [1, totalRange],
         serverSeed,
         nonce,
         clientSeed,

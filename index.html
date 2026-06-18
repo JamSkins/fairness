@@ -13,13 +13,13 @@
             <p>Verify the fairness of game results using cryptographic proofs</p>
             <div class="url-info">
                 <small>💡 <strong>Tip:</strong> Share your calculations with others using URLs! Use 🔗 Share URL button or access directly: 
-                <code>#dice</code>, <code>#wheel</code>, <code>#mines</code>, <code>#cases</code>, <code>#upgrader</code>, <code>#code</code></small>
+                <code>#dice</code>, <code>#double</code>, <code>#mines</code>, <code>#cases</code>, <code>#upgrader</code>, <code>#code</code></small>
             </div>
         </header>
 
         <nav class="tabs">
             <button class="tab-button active" data-tab="dice">🎲 Dice</button>
-            <button class="tab-button" data-tab="wheel">🎡 Double</button>
+            <button class="tab-button" data-tab="double">🎡 Double</button>
             <button class="tab-button" data-tab="mines">💣 Mines</button>
             <button class="tab-button" data-tab="cases">📦 Cases</button>
             <button class="tab-button" data-tab="upgrader">🔫 Upgrader</button>
@@ -56,31 +56,31 @@
         </div>
 
         <!-- Double Calculator -->
-        <div id="wheel" class="tab-content">
+        <div id="double" class="tab-content">
             <div class="game-section">
                 <h2>🎡 Double Fairness Verification</h2>
                 <p>Double game generates a sector number based on total sectors count</p>
                 
-                <form id="wheelForm" class="fairness-form">
+                <form id="doubleForm" class="fairness-form">
                     <div class="input-group">
-                        <label for="wheelSessionId">Session ID (Client Seed):</label>
-                        <input type="text" id="wheelSessionId" placeholder="Enter session ID" required>
+                        <label for="doubleSessionId">Session ID (Client Seed):</label>
+                        <input type="text" id="doubleSessionId" placeholder="Enter session ID" required>
                     </div>
                     
                     <div class="input-group">
-                        <label for="wheelServerSeed">Server Seed:</label>
-                        <input type="text" id="wheelServerSeed" placeholder="Enter server seed" required>
+                        <label for="doubleServerSeed">Server Seed:</label>
+                        <input type="text" id="doubleServerSeed" placeholder="Enter server seed" required>
                     </div>
                     
                     <div class="input-group">
-                        <label for="wheelSectorsCount">Sectors Count:</label>
-                        <input type="number" id="wheelSectorsCount" placeholder="Enter number of sectors" required>
+                        <label for="doubleSectorsCount">Sectors Count:</label>
+                        <input type="number" id="doubleSectorsCount" placeholder="Enter number of sectors" required>
                     </div>
                     
                     <button type="submit" class="calculate-btn">Calculate Result</button>
                 </form>
                 
-                <div id="wheelResult" class="result-section"></div>
+                <div id="doubleResult" class="result-section"></div>
             </div>
         </div>
 

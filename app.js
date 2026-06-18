@@ -41,8 +41,8 @@ class ProvablyFairCalculator {
         diceForm.addEventListener('submit', (e) => this.handleDiceSubmit(e));
 
         // Double form
-        const wheelForm = document.getElementById('wheelForm');
-        wheelForm.addEventListener('submit', (e) => this.handleWheelSubmit(e));
+        const doubleForm = document.getElementById('doubleForm');
+        doubleForm.addEventListener('submit', (e) => this.handleDoubleSubmit(e));
 
         // Mines form
         const minesForm = document.getElementById('minesForm');
@@ -63,7 +63,7 @@ class ProvablyFairCalculator {
     setupSampleData() {
         // Add sample data buttons to each form
         this.addSampleDataButton('diceForm', this.getDiceSampleData());
-        this.addSampleDataButton('wheelForm', this.getWheelSampleData());
+        this.addSampleDataButton('doubleForm', this.getDoubleSampleData());
         this.addSampleDataButton('minesForm', this.getMinesSampleData());
         this.addSampleDataButton('casesForm', this.getCasesSampleData());
         this.addSampleDataButton('upgraderForm', this.getUpgraderSampleData());
@@ -131,11 +131,11 @@ class ProvablyFairCalculator {
         };
     }
 
-    getWheelSampleData() {
+    getDoubleSampleData() {
         return {
-            wheelSessionId: 'session_abc123',
-            wheelServerSeed: 'b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef1234567a',
-            wheelSectorsCount: '16'
+            doubleSessionId: 'session_abc123',
+            doubleServerSeed: 'b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef1234567a',
+            doubleSectorsCount: '16'
         };
     }
 
@@ -194,13 +194,13 @@ class ProvablyFairCalculator {
     /**
      * Handle double form submission
      */
-    async handleWheelSubmit(e) {
+    async handleDoubleSubmit(e) {
         e.preventDefault();
         
         const form = e.target;
-        const sessionId = form.querySelector('#wheelSessionId').value;
-        const serverSeed = form.querySelector('#wheelServerSeed').value;
-        const sectorsCount = parseInt(form.querySelector('#wheelSectorsCount').value);
+        const sessionId = form.querySelector('#doubleSessionId').value;
+        const serverSeed = form.querySelector('#doubleServerSeed').value;
+        const sectorsCount = parseInt(form.querySelector('#doubleSectorsCount').value);
         
         if (!this.validateInputs([sessionId, serverSeed], [sectorsCount])) return;
         
@@ -208,9 +208,9 @@ class ProvablyFairCalculator {
         
         try {
             const result = await window.ProvablyFair.calculateDoubleResult(sessionId, serverSeed, sectorsCount);
-            this.displayWheelResult(result);
+            this.displayDoubleResult(result);
         } catch (error) {
-            this.displayError('wheelResult', error.message);
+            this.displayError('doubleResult', error.message);
         } finally {
             this.setLoading(form, false);
         }
@@ -355,8 +355,8 @@ class ProvablyFairCalculator {
     /**
      * Display double game result
      */
-    displayWheelResult(result) {
-        const resultSection = document.getElementById('wheelResult');
+    displayDoubleResult(result) {
+        const resultSection = document.getElementById('doubleResult');
         
         resultSection.innerHTML = `
             <div class="result-item">
@@ -807,10 +807,6 @@ async function calculateDoubleResult(sessionId, serverSeed, sectorsCount) {
     };
 }
 
-async function calculateWheelResult(sessionId, serverSeed, sectorsCount) {
-    return calculateDoubleResult(sessionId, serverSeed, sectorsCount);
-}
-
 /**
  * Calculate Mines game result (mine positions on grid)
  * @param {string} clientSeed - Client seed
@@ -920,7 +916,7 @@ async function calculateUpgraderResult(clientSeed, serverSeed, nonce) {
         const [tab, params] = hash.split('?');
         
         // Switch to tab if specified
-        if (tab && ['dice', 'wheel', 'mines', 'cases', 'upgrader', 'code'].includes(tab)) {
+        if (tab && ['dice', 'double', 'mines', 'cases', 'upgrader', 'code'].includes(tab)) {
             this.switchToTab(tab, false); // Don't update URL to avoid loop
         }
         
@@ -979,8 +975,8 @@ async function calculateUpgraderResult(clientSeed, serverSeed, nonce) {
                 case 'dice':
                     this.fillDiceForm(params);
                     break;
-                case 'wheel':
-                    this.fillWheelForm(params);
+                case 'double':
+                    this.fillDoubleForm(params);
                     break;
                 case 'mines':
                     this.fillMinesForm(params);
@@ -1011,16 +1007,16 @@ async function calculateUpgraderResult(clientSeed, serverSeed, nonce) {
     }
 
     /**
-     * Fill wheel form from URL parameters
+     * Fill double form from URL parameters
      */
-    fillWheelForm(params) {
+    fillDoubleForm(params) {
         const sessionId = params.get('sessionId');
         const serverSeed = params.get('serverSeed');
         const sectorsCount = params.get('sectorsCount');
         
-        if (sessionId) document.getElementById('wheelSessionId').value = sessionId;
-        if (serverSeed) document.getElementById('wheelServerSeed').value = serverSeed;
-        if (sectorsCount) document.getElementById('wheelSectorsCount').value = sectorsCount;
+        if (sessionId) document.getElementById('doubleSessionId').value = sessionId;
+        if (serverSeed) document.getElementById('doubleServerSeed').value = serverSeed;
+        if (sectorsCount) document.getElementById('doubleSectorsCount').value = sectorsCount;
     }
 
     /**
@@ -1086,14 +1082,14 @@ async function calculateUpgraderResult(clientSeed, serverSeed, nonce) {
                     if (diceNonce) params.set('nonce', diceNonce);
                     break;
                     
-                case 'wheel':
-                    const wheelSessionId = document.getElementById('wheelSessionId').value;
-                    const wheelServerSeed = document.getElementById('wheelServerSeed').value;
-                    const wheelSectorsCount = document.getElementById('wheelSectorsCount').value;
+                case 'double':
+                    const doubleSessionId = document.getElementById('doubleSessionId').value;
+                    const doubleServerSeed = document.getElementById('doubleServerSeed').value;
+                    const doubleSectorsCount = document.getElementById('doubleSectorsCount').value;
                     
-                    if (wheelSessionId) params.set('sessionId', wheelSessionId);
-                    if (wheelServerSeed) params.set('serverSeed', wheelServerSeed);
-                    if (wheelSectorsCount) params.set('sectorsCount', wheelSectorsCount);
+                    if (doubleSessionId) params.set('sessionId', doubleSessionId);
+                    if (doubleServerSeed) params.set('serverSeed', doubleServerSeed);
+                    if (doubleSectorsCount) params.set('sectorsCount', doubleSectorsCount);
                     break;
                     
                 case 'mines':
@@ -1180,7 +1176,6 @@ function updateFunctions() {
             window.ProvablyFair = {
                 calculateDiceResult,
                 calculateDoubleResult,
-                calculateWheelResult,
                 calculateMinesResult,
                 calculateCasesResult,
                 calculateUpgraderResult,
@@ -1237,7 +1232,6 @@ ${gamesCode}
 window.ProvablyFair = {
     calculateDiceResult,
     calculateDoubleResult,
-    calculateWheelResult,
     calculateMinesResult,
     calculateCasesResult,
     calculateUpgraderResult,

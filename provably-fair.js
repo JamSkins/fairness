@@ -264,10 +264,6 @@ async function calculateDoubleResult(sessionId, serverSeed, sectorsCount) {
     };
 }
 
-async function calculateWheelResult(sessionId, serverSeed, sectorsCount) {
-    return calculateDoubleResult(sessionId, serverSeed, sectorsCount);
-}
-
 /**
  * Calculate Mines game result (mine positions on grid)
  * @param {string} clientSeed - Client seed
@@ -348,7 +344,6 @@ async function calculateUpgraderResult(clientSeed, serverSeed, nonce) {
 window.ProvablyFair = {
     calculateDiceResult,
     calculateDoubleResult,
-    calculateWheelResult,
     calculateMinesResult,
     calculateCasesResult,
     calculateUpgraderResult,

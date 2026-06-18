@@ -40,7 +40,7 @@ class ProvablyFairCalculator {
         const diceForm = document.getElementById('diceForm');
         diceForm.addEventListener('submit', (e) => this.handleDiceSubmit(e));
 
-        // Wheel form
+        // Double form
         const wheelForm = document.getElementById('wheelForm');
         wheelForm.addEventListener('submit', (e) => this.handleWheelSubmit(e));
 
@@ -192,7 +192,7 @@ class ProvablyFairCalculator {
     }
 
     /**
-     * Handle wheel form submission
+     * Handle double form submission
      */
     async handleWheelSubmit(e) {
         e.preventDefault();
@@ -207,7 +207,7 @@ class ProvablyFairCalculator {
         this.setLoading(form, true);
         
         try {
-            const result = await window.ProvablyFair.calculateWheelResult(sessionId, serverSeed, sectorsCount);
+            const result = await window.ProvablyFair.calculateDoubleResult(sessionId, serverSeed, sectorsCount);
             this.displayWheelResult(result);
         } catch (error) {
             this.displayError('wheelResult', error.message);
@@ -353,7 +353,7 @@ class ProvablyFairCalculator {
     }
 
     /**
-     * Display wheel game result
+     * Display double game result
      */
     displayWheelResult(result) {
         const resultSection = document.getElementById('wheelResult');
@@ -785,18 +785,18 @@ async function calculateDiceResult(clientSeed, serverSeed, nonce) {
 }
 
 /**
- * Calculate Wheel game result (sector number from 1 to sectorsCount)
+ * Calculate Double game result (sector number from 1 to sectorsCount)
  * @param {string} sessionId - Session ID (used as client seed)
  * @param {string} serverSeed - Server seed
- * @param {number} sectorsCount - Number of sectors on the wheel
+ * @param {number} sectorsCount - Number of sectors
  * @returns {Promise<Object>} - Result object with winSectorNumber and hash
  */
-async function calculateWheelResult(sessionId, serverSeed, sectorsCount) {
+async function calculateDoubleResult(sessionId, serverSeed, sectorsCount) {
     const winSectorNumber = await getNumberFromRange({
         rng: [1, sectorsCount],
         serverSeed,
         clientSeed: sessionId,
-        nonce: 0, // Wheel uses nonce 0
+        nonce: 0, // Double uses nonce 0
     });
     
     const hash = await getHashBySeed(serverSeed);
@@ -805,6 +805,10 @@ async function calculateWheelResult(sessionId, serverSeed, sectorsCount) {
         winSectorNumber,
         hash,
     };
+}
+
+async function calculateWheelResult(sessionId, serverSeed, sectorsCount) {
+    return calculateDoubleResult(sessionId, serverSeed, sectorsCount);
 }
 
 /**
@@ -1175,6 +1179,7 @@ function updateFunctions() {
             // Update global ProvablyFair object
             window.ProvablyFair = {
                 calculateDiceResult,
+                calculateDoubleResult,
                 calculateWheelResult,
                 calculateMinesResult,
                 calculateCasesResult,
@@ -1231,6 +1236,7 @@ ${gamesCode}
 //==============================================
 window.ProvablyFair = {
     calculateDiceResult,
+    calculateDoubleResult,
     calculateWheelResult,
     calculateMinesResult,
     calculateCasesResult,

@@ -2,6 +2,9 @@
  * Provably Fair Calculator - Main Application Logic
  */
 
+// UI limit only: the backend does not cap the batch size, but rendering stays responsive.
+const FARM_MAX_OPEN_COUNT = 10000;
+
 class ProvablyFairCalculator {
     constructor() {
         this.init();
@@ -52,6 +55,10 @@ class ProvablyFairCalculator {
         const casesForm = document.getElementById('casesForm');
         casesForm.addEventListener('submit', (e) => this.handleCasesSubmit(e));
 
+        // Farm cases form
+        const farmForm = document.getElementById('farmForm');
+        farmForm.addEventListener('submit', (e) => this.handleFarmSubmit(e));
+
         // Upgrader form
         const upgraderForm = document.getElementById('upgraderForm');
         upgraderForm.addEventListener('submit', (e) => this.handleUpgraderSubmit(e));
@@ -66,6 +73,7 @@ class ProvablyFairCalculator {
         this.addSampleDataButton('doubleForm', this.getDoubleSampleData());
         this.addSampleDataButton('minesForm', this.getMinesSampleData());
         this.addSampleDataButton('casesForm', this.getCasesSampleData());
+        this.addSampleDataButton('farmForm', this.getFarmSampleData());
         this.addSampleDataButton('upgraderForm', this.getUpgraderSampleData());
     }
 
@@ -155,6 +163,16 @@ class ProvablyFairCalculator {
             casesServerSeed: 'd4e5f6789012345678901234567890abcdef1234567890abcdef1234567ab2c3',
             casesNonce: '3',
             casesTotalRange: '2000'
+        };
+    }
+
+    getFarmSampleData() {
+        return {
+            farmClientSeed: 'farm-batch',
+            farmServerSeed: 'a3f1c9d84b27e650fa1c8d93e47b20516c8ad4f9e0b371c25ad9e846f03b7c12',
+            farmNonce: '11',
+            farmOpenCount: '8',
+            farmTotalRange: '1000000'
         };
     }
 
@@ -269,6 +287,43 @@ class ProvablyFairCalculator {
             this.displayCasesResult(result);
         } catch (error) {
             this.displayError('casesResult', error.message);
+        } finally {
+            this.setLoading(form, false);
+        }
+    }
+
+    /**
+     * Handle farm cases form submission
+     */
+    async handleFarmSubmit(e) {
+        e.preventDefault();
+        
+        const form = e.target;
+        const clientSeed = form.querySelector('#farmClientSeed').value;
+        const serverSeed = form.querySelector('#farmServerSeed').value;
+        const nonce = parseInt(form.querySelector('#farmNonce').value);
+        const openCount = parseInt(form.querySelector('#farmOpenCount').value);
+        const totalRange = parseInt(form.querySelector('#farmTotalRange').value);
+        
+        if (!this.validateInputs([clientSeed, serverSeed], [nonce, openCount, totalRange])) return;
+        
+        if (openCount < 1 || openCount > FARM_MAX_OPEN_COUNT) {
+            this.displayError('farmResult', `Open count must be between 1 and ${FARM_MAX_OPEN_COUNT}`);
+            return;
+        }
+        
+        if (totalRange < 1) {
+            this.displayError('farmResult', 'Total range must be at least 1');
+            return;
+        }
+        
+        this.setLoading(form, true);
+        
+        try {
+            const result = await window.ProvablyFair.calculateFarmCasesResult(clientSeed, serverSeed, nonce, openCount, totalRange);
+            this.displayFarmResult(result);
+        } catch (error) {
+            this.displayError('farmResult', error.message);
         } finally {
             this.setLoading(form, false);
         }
@@ -451,6 +506,55 @@ class ProvablyFairCalculator {
     }
 
     /**
+     * Display farm cases batch result: every opening in batch order
+     */
+    displayFarmResult(result) {
+        const resultSection = document.getElementById('farmResult');
+        const rolls = result.rolls.map(({ roll }) => roll);
+        const rowsHtml = result.rolls
+            .map(({ index, roll }) => `
+                <tr>
+                    <td>${index + 1}</td>
+                    <td>${index}</td>
+                    <td class="roll">${roll}</td>
+                </tr>`)
+            .join('');
+        
+        resultSection.innerHTML = `
+            <div class="result-item">
+                <div class="result-label">Openings</div>
+                <div class="result-value number">${result.rolls.length}</div>
+            </div>
+            <div class="result-item">
+                <div class="result-label">All Openings (batch order)</div>
+                <div class="farm-table-wrapper">
+                    <table class="farm-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Index</th>
+                                <th>Roll</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rowsHtml}</tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="result-item">
+                <div class="result-label">Rolls (JSON)</div>
+                <div class="result-value">${JSON.stringify(rolls)}</div>
+            </div>
+            <div class="result-item">
+                <div class="result-label">Server Seed Hash</div>
+                <div class="result-value">${result.hash}</div>
+            </div>
+        `;
+        
+        resultSection.classList.add('show');
+        resultSection.classList.remove('error');
+    }
+
+    /**
      * Display upgrader game result
      */
     displayUpgraderResult(result) {
@@ -599,6 +703,57 @@ function readUInt32BE(buffer, offset) {
      */
     getEmbeddedCryptoFunctions() {
         return `/**
+ * Opens the byte stream for one (serverSeed, clientSeed, nonce) triple and returns an
+ * async draw function yielding uniformly-distributed integers in [lower, upper].
+ *
+ * Mirrors the backend's createRangeNumberStream: HMAC derivation, block extension,
+ * rejection sampling and modulo mapping live here only. Rejected draws still advance
+ * the cursor. Each call to the returned function advances the stream.
+ *
+ * @param {Object} params - Parameters object
+ * @param {[number, number]} params.rng - Range [lower, upper] (inclusive)
+ * @param {string} params.serverSeed - Server seed
+ * @param {number} params.nonce - Nonce value
+ * @param {string} params.clientSeed - Client seed (optional)
+ * @returns {Promise<() => Promise<number>>} - Draw function
+ */
+async function createRangeNumberStream({ rng, serverSeed, nonce, clientSeed = '' }) {
+    const [lower, upper] = rng;
+    if (upper < lower) throw new Error('upper must be ≥ lower');
+    
+    const range = BigInt(upper - lower + 1);
+    const MAX_UINT32 = BigInt(0xffffffff); // 2^32 − 1
+    const limit = MAX_UINT32 - (MAX_UINT32 % range);
+    
+    const baseMsg = \`\${clientSeed}:\${nonce}\`;
+    let digest = bufferToUint8Array(await createHmac(serverSeed, baseMsg));
+    let cursor = 0;
+    let digestIndex = 0;
+    
+    return async () => {
+        for (;;) {
+            if (cursor + 4 > digest.length) {
+                // A digest is 32 bytes and blocks are 4 bytes, so the previous digest is
+                // always fully consumed here. Continuing on the next digest reads exactly
+                // the same bytes as the backend's Buffer.concat, without growing a buffer.
+                digestIndex += 1;
+                digest = bufferToUint8Array(
+                    await createHmac(serverSeed, \`\${baseMsg}:\${digestIndex}\`)
+                );
+                cursor = 0;
+            }
+            
+            const num = BigInt(readUInt32BE(digest, cursor));
+            cursor += 4;
+            
+            if (num < limit) {
+                return Number((num % range) + BigInt(lower));
+            }
+        }
+    };
+}
+
+/**
  * Returns unique numbers from a given range using provably fair algorithm
  * @param {Object} params - Parameters object
  * @param {number} params.count - Number of unique numbers to generate
@@ -611,9 +766,9 @@ function readUInt32BE(buffer, offset) {
 async function getUniqueNumbersFromRange({ count, rng, serverSeed, nonce, clientSeed = '' }) {
     if (count <= 0) throw new Error('count must be > 0');
     
-    const [lower, upper] = rng;
-    if (upper < lower) throw new Error('upper must be ≥ lower');
+    const draw = await createRangeNumberStream({ rng, serverSeed, nonce, clientSeed });
     
+    const [lower, upper] = rng;
     const totalRange = upper - lower + 1;
     if (count > totalRange) {
         throw new Error(\`Cannot generate \${count} unique numbers from range of \${totalRange}\`);
@@ -623,39 +778,9 @@ async function getUniqueNumbersFromRange({ count, rng, serverSeed, nonce, client
     const shouldUseInversion = count > totalRange / 2;
     const targetCount = shouldUseInversion ? totalRange - count : count;
     
-    const range = BigInt(totalRange);
-    const MAX_UINT32 = BigInt(0xffffffff); // 2^32 − 1
-    const limit = MAX_UINT32 - (MAX_UINT32 % range);
-    
-    const baseMsg = \`\${clientSeed}:\${nonce}\`;
-    let digest = bufferToUint8Array(await createHmac(serverSeed, baseMsg));
-    
     const results = new Set();
-    let cursor = 0;
-    let digestIndex = 0;
-    
     while (results.size < targetCount) {
-        if (cursor + 4 > digest.length) {
-            digestIndex += 1;
-            const newDigest = bufferToUint8Array(
-                await createHmac(serverSeed, \`\${baseMsg}:\${digestIndex}\`)
-            );
-            const combinedLength = digest.length + newDigest.length;
-            const combined = new Uint8Array(combinedLength);
-            combined.set(digest);
-            combined.set(newDigest, digest.length);
-            digest = combined;
-        }
-        
-        const num = BigInt(readUInt32BE(digest, cursor));
-        cursor += 4;
-        
-        if (num < limit) {
-            const result = Number((num % range) + BigInt(lower));
-            if (!results.has(result)) {
-                results.add(result);
-            }
-        }
+        results.add(await draw());
     }
     
     if (shouldUseInversion) {
@@ -671,6 +796,29 @@ async function getUniqueNumbersFromRange({ count, rng, serverSeed, nonce, client
     }
     
     return Array.from(results);
+}
+
+/**
+ * Returns \`count\` numbers from a given range WITH replacement (values may repeat).
+ * Used by farm case batches: every draw is an independent opening.
+ * @param {Object} params - Parameters object
+ * @param {number} params.count - Number of values to draw
+ * @param {[number, number]} params.rng - Range [lower, upper] (inclusive)
+ * @param {string} params.serverSeed - Server seed
+ * @param {number} params.nonce - Nonce value
+ * @param {string} params.clientSeed - Client seed (optional)
+ * @returns {Promise<number[]>} - Numbers in generation order
+ */
+async function getNumbersFromRange({ count, rng, serverSeed, nonce, clientSeed = '' }) {
+    if (count <= 0) throw new Error('count must be > 0');
+    
+    const draw = await createRangeNumberStream({ rng, serverSeed, nonce, clientSeed });
+    
+    const numbers = [];
+    for (let i = 0; i < count; i += 1) {
+        numbers.push(await draw());
+    }
+    return numbers;
 }
 
 /**
@@ -858,6 +1006,32 @@ async function calculateCasesResult(clientSeed, serverSeed, nonce, totalRange = 
 }
 
 /**
+ * Calculate Farm Cases batch result (one nonce for the whole batch)
+ * @param {string} clientSeed - Client seed
+ * @param {string} serverSeed - Server seed
+ * @param {number} nonce - Nonce value (shared by all openings in the batch)
+ * @param {number} openCount - Number of openings in the batch
+ * @param {number} totalRange - Case total range (default 1000000)
+ * @returns {Promise<Object>} - Result object with rolls ({ index, roll }[]) and hash
+ */
+async function calculateFarmCasesResult(clientSeed, serverSeed, nonce, openCount, totalRange = 1000000) {
+    const numbers = await getNumbersFromRange({
+        count: openCount,
+        rng: [1, totalRange],
+        serverSeed,
+        nonce,
+        clientSeed,
+    });
+    
+    const hash = await getHashBySeed(serverSeed);
+    
+    return {
+        rolls: numbers.map((roll, index) => ({ index, roll })),
+        hash,
+    };
+}
+
+/**
  * Calculate Upgrader game result (upgrade success percentage from 0.0000 to 100.0000)
  * @param {string} clientSeed - Client seed
  * @param {string} serverSeed - Server seed
@@ -916,7 +1090,7 @@ async function calculateUpgraderResult(clientSeed, serverSeed, nonce) {
         const [tab, params] = hash.split('?');
         
         // Switch to tab if specified
-        if (tab && ['dice', 'double', 'mines', 'cases', 'upgrader', 'code'].includes(tab)) {
+        if (tab && ['dice', 'double', 'mines', 'cases', 'farm', 'upgrader', 'code'].includes(tab)) {
             this.switchToTab(tab, false); // Don't update URL to avoid loop
         }
         
@@ -983,6 +1157,9 @@ async function calculateUpgraderResult(clientSeed, serverSeed, nonce) {
                     break;
                 case 'cases':
                     this.fillCasesForm(params);
+                    break;
+                case 'farm':
+                    this.fillFarmForm(params);
                     break;
                 case 'upgrader':
                     this.fillUpgraderForm(params);
@@ -1052,6 +1229,23 @@ async function calculateUpgraderResult(clientSeed, serverSeed, nonce) {
     }
 
     /**
+     * Fill farm cases form from URL parameters
+     */
+    fillFarmForm(params) {
+        const clientSeed = params.get('clientSeed');
+        const serverSeed = params.get('serverSeed');
+        const nonce = params.get('nonce');
+        const openCount = params.get('openCount');
+        const totalRange = params.get('totalRange');
+        
+        if (clientSeed) document.getElementById('farmClientSeed').value = clientSeed;
+        if (serverSeed) document.getElementById('farmServerSeed').value = serverSeed;
+        if (nonce) document.getElementById('farmNonce').value = nonce;
+        if (openCount) document.getElementById('farmOpenCount').value = openCount;
+        if (totalRange) document.getElementById('farmTotalRange').value = totalRange;
+    }
+
+    /**
      * Fill upgrader form from URL parameters
      */
     fillUpgraderForm(params) {
@@ -1118,6 +1312,20 @@ async function calculateUpgraderResult(clientSeed, serverSeed, nonce) {
                     if (casesTotalRange) params.set('totalRange', casesTotalRange);
                     break;
                     
+                case 'farm':
+                    const farmClientSeed = document.getElementById('farmClientSeed').value;
+                    const farmServerSeed = document.getElementById('farmServerSeed').value;
+                    const farmNonce = document.getElementById('farmNonce').value;
+                    const farmOpenCount = document.getElementById('farmOpenCount').value;
+                    const farmTotalRange = document.getElementById('farmTotalRange').value;
+                    
+                    if (farmClientSeed) params.set('clientSeed', farmClientSeed);
+                    if (farmServerSeed) params.set('serverSeed', farmServerSeed);
+                    if (farmNonce) params.set('nonce', farmNonce);
+                    if (farmOpenCount) params.set('openCount', farmOpenCount);
+                    if (farmTotalRange) params.set('totalRange', farmTotalRange);
+                    break;
+                    
                 case 'upgrader':
                     const upgraderClientSeed = document.getElementById('upgraderClientSeed').value;
                     const upgraderServerSeed = document.getElementById('upgraderServerSeed').value;
@@ -1178,9 +1386,11 @@ function updateFunctions() {
                 calculateDoubleResult,
                 calculateMinesResult,
                 calculateCasesResult,
+                calculateFarmCasesResult,
                 calculateUpgraderResult,
                 getHashBySeed,
                 getNumberFromRange,
+                getNumbersFromRange,
                 getUniqueNumbersFromRange,
             };
         `;
@@ -1234,9 +1444,11 @@ window.ProvablyFair = {
     calculateDoubleResult,
     calculateMinesResult,
     calculateCasesResult,
+    calculateFarmCasesResult,
     calculateUpgraderResult,
     getHashBySeed,
     getNumberFromRange,
+    getNumbersFromRange,
     getUniqueNumbersFromRange,
 };`;
 

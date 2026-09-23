@@ -92,6 +92,57 @@ function readUInt32BE(buffer, offset) {
 }
 
 /**
+ * Opens the byte stream for one (serverSeed, clientSeed, nonce) triple and returns an
+ * async draw function yielding uniformly-distributed integers in [lower, upper].
+ *
+ * Mirrors the backend's createRangeNumberStream: HMAC derivation, block extension,
+ * rejection sampling and modulo mapping live here only. Rejected draws still advance
+ * the cursor. Each call to the returned function advances the stream.
+ *
+ * @param {Object} params - Parameters object
+ * @param {[number, number]} params.rng - Range [lower, upper] (inclusive)
+ * @param {string} params.serverSeed - Server seed
+ * @param {number} params.nonce - Nonce value
+ * @param {string} params.clientSeed - Client seed (optional)
+ * @returns {Promise<() => Promise<number>>} - Draw function
+ */
+async function createRangeNumberStream({ rng, serverSeed, nonce, clientSeed = '' }) {
+    const [lower, upper] = rng;
+    if (upper < lower) throw new Error('upper must be ≥ lower');
+    
+    const range = BigInt(upper - lower + 1);
+    const MAX_UINT32 = BigInt(0xffffffff); // 2^32 − 1
+    const limit = MAX_UINT32 - (MAX_UINT32 % range);
+    
+    const baseMsg = `${clientSeed}:${nonce}`;
+    let digest = bufferToUint8Array(await createHmac(serverSeed, baseMsg));
+    let cursor = 0;
+    let digestIndex = 0;
+    
+    return async () => {
+        for (;;) {
+            if (cursor + 4 > digest.length) {
+                // A digest is 32 bytes and blocks are 4 bytes, so the previous digest is
+                // always fully consumed here. Continuing on the next digest reads exactly
+                // the same bytes as the backend's Buffer.concat, without growing a buffer.
+                digestIndex += 1;
+                digest = bufferToUint8Array(
+                    await createHmac(serverSeed, `${baseMsg}:${digestIndex}`)
+                );
+                cursor = 0;
+            }
+            
+            const num = BigInt(readUInt32BE(digest, cursor));
+            cursor += 4;
+            
+            if (num < limit) {
+                return Number((num % range) + BigInt(lower));
+            }
+        }
+    };
+}
+
+/**
  * Returns unique numbers from a given range using provably fair algorithm
  * @param {Object} params - Parameters object
  * @param {number} params.count - Number of unique numbers to generate
@@ -104,9 +155,9 @@ function readUInt32BE(buffer, offset) {
 async function getUniqueNumbersFromRange({ count, rng, serverSeed, nonce, clientSeed = '' }) {
     if (count <= 0) throw new Error('count must be > 0');
     
-    const [lower, upper] = rng;
-    if (upper < lower) throw new Error('upper must be ≥ lower');
+    const draw = await createRangeNumberStream({ rng, serverSeed, nonce, clientSeed });
     
+    const [lower, upper] = rng;
     const totalRange = upper - lower + 1;
     if (count > totalRange) {
         throw new Error(`Cannot generate ${count} unique numbers from range of ${totalRange}`);
@@ -116,39 +167,9 @@ async function getUniqueNumbersFromRange({ count, rng, serverSeed, nonce, client
     const shouldUseInversion = count > totalRange / 2;
     const targetCount = shouldUseInversion ? totalRange - count : count;
     
-    const range = BigInt(totalRange);
-    const MAX_UINT32 = BigInt(0xffffffff); // 2^32 − 1
-    const limit = MAX_UINT32 - (MAX_UINT32 % range);
-    
-    const baseMsg = `${clientSeed}:${nonce}`;
-    let digest = bufferToUint8Array(await createHmac(serverSeed, baseMsg));
-    
     const results = new Set();
-    let cursor = 0;
-    let digestIndex = 0;
-    
     while (results.size < targetCount) {
-        if (cursor + 4 > digest.length) {
-            digestIndex += 1;
-            const newDigest = bufferToUint8Array(
-                await createHmac(serverSeed, `${baseMsg}:${digestIndex}`)
-            );
-            const combinedLength = digest.length + newDigest.length;
-            const combined = new Uint8Array(combinedLength);
-            combined.set(digest);
-            combined.set(newDigest, digest.length);
-            digest = combined;
-        }
-        
-        const num = BigInt(readUInt32BE(digest, cursor));
-        cursor += 4;
-        
-        if (num < limit) {
-            const result = Number((num % range) + BigInt(lower));
-            if (!results.has(result)) {
-                results.add(result);
-            }
-        }
+        results.add(await draw());
     }
     
     if (shouldUseInversion) {
@@ -164,6 +185,29 @@ async function getUniqueNumbersFromRange({ count, rng, serverSeed, nonce, client
     }
     
     return Array.from(results);
+}
+
+/**
+ * Returns `count` numbers from a given range WITH replacement (values may repeat).
+ * Used by farm case batches: every draw is an independent opening.
+ * @param {Object} params - Parameters object
+ * @param {number} params.count - Number of values to draw
+ * @param {[number, number]} params.rng - Range [lower, upper] (inclusive)
+ * @param {string} params.serverSeed - Server seed
+ * @param {number} params.nonce - Nonce value
+ * @param {string} params.clientSeed - Client seed (optional)
+ * @returns {Promise<number[]>} - Numbers in generation order
+ */
+async function getNumbersFromRange({ count, rng, serverSeed, nonce, clientSeed = '' }) {
+    if (count <= 0) throw new Error('count must be > 0');
+    
+    const draw = await createRangeNumberStream({ rng, serverSeed, nonce, clientSeed });
+    
+    const numbers = [];
+    for (let i = 0; i < count; i += 1) {
+        numbers.push(await draw());
+    }
+    return numbers;
 }
 
 /**
@@ -315,6 +359,32 @@ async function calculateCasesResult(clientSeed, serverSeed, nonce, totalRange = 
 }
 
 /**
+ * Calculate Farm Cases batch result (one nonce for the whole batch)
+ * @param {string} clientSeed - Client seed
+ * @param {string} serverSeed - Server seed
+ * @param {number} nonce - Nonce value (shared by all openings in the batch)
+ * @param {number} openCount - Number of openings in the batch
+ * @param {number} totalRange - Case total range (default 1000000)
+ * @returns {Promise<Object>} - Result object with rolls ({ index, roll }[]) and hash
+ */
+async function calculateFarmCasesResult(clientSeed, serverSeed, nonce, openCount, totalRange = 1000000) {
+    const numbers = await getNumbersFromRange({
+        count: openCount,
+        rng: [1, totalRange],
+        serverSeed,
+        nonce,
+        clientSeed,
+    });
+    
+    const hash = await getHashBySeed(serverSeed);
+    
+    return {
+        rolls: numbers.map((roll, index) => ({ index, roll })),
+        hash,
+    };
+}
+
+/**
  * Calculate Upgrader game result (upgrade success percentage from 0.0000 to 100.0000)
  * @param {string} clientSeed - Client seed
  * @param {string} serverSeed - Server seed
@@ -346,8 +416,10 @@ window.ProvablyFair = {
     calculateDoubleResult,
     calculateMinesResult,
     calculateCasesResult,
+    calculateFarmCasesResult,
     calculateUpgraderResult,
     getHashBySeed,
     getNumberFromRange,
+    getNumbersFromRange,
     getUniqueNumbersFromRange,
 };

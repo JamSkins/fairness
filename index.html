@@ -13,7 +13,7 @@
             <p>Verify the fairness of game results using cryptographic proofs</p>
             <div class="url-info">
                 <small>💡 <strong>Tip:</strong> Share your calculations with others using URLs! Use 🔗 Share URL button or access directly: 
-                <code>#dice</code>, <code>#double</code>, <code>#mines</code>, <code>#cases</code>, <code>#upgrader</code>, <code>#code</code></small>
+                <code>#dice</code>, <code>#double</code>, <code>#mines</code>, <code>#cases</code>, <code>#farm</code>, <code>#upgrader</code>, <code>#code</code></small>
             </div>
         </header>
 
@@ -22,6 +22,7 @@
             <button class="tab-button" data-tab="double">🎡 Double</button>
             <button class="tab-button" data-tab="mines">💣 Mines</button>
             <button class="tab-button" data-tab="cases">📦 Cases</button>
+            <button class="tab-button" data-tab="farm">🌾 Farm Cases</button>
             <button class="tab-button" data-tab="upgrader">🔫 Upgrader</button>
             <button class="tab-button" data-tab="code">📄 Code</button>
         </nav>
@@ -157,6 +158,37 @@
             </div>
         </div>
 
+        <!-- Farm Cases Calculator -->
+        <div id="farm" class="tab-content">
+            <div class="game-section">
+                <h2>🌾 Farm Cases Fairness Verification</h2>
+                <p>A farm batch uses one nonce for all openings: the stream <code>clientSeed:nonce</code> yields one roll per opening, in order, from 1 to the total range. The same roll can appear more than once.</p>
+                <form id="farmForm" class="fairness-form">
+                    <div class="input-group">
+                        <label for="farmClientSeed">Client Seed:</label>
+                        <input type="text" id="farmClientSeed" placeholder="Enter client seed" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="farmServerSeed">Server Seed:</label>
+                        <input type="text" id="farmServerSeed" placeholder="Enter server seed" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="farmNonce">Nonce:</label>
+                        <input type="number" id="farmNonce" placeholder="Enter batch nonce" min="0" step="1" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="farmOpenCount">Open Count:</label>
+                        <input type="number" id="farmOpenCount" placeholder="Enter number of openings in the batch" min="1" max="10000" step="1" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="farmTotalRange">Total Range:</label>
+                        <input type="number" id="farmTotalRange" placeholder="Enter case total range (default: 1000000)" value="1000000" min="1" step="1" required>
+                    </div>
+                    <button type="submit" class="calculate-btn">Calculate Openings</button>
+                </form>
+                <div id="farmResult" class="result-section"></div>
+            </div>
+        </div>
         <!-- Upgrader Calculator -->
         <div id="upgrader" class="tab-content">
             <div class="game-section">
@@ -217,7 +249,7 @@
                 <div id="crypto" class="function-content">
                     <h3>🔐 Random Number Generation</h3>
                     <div class="code-section">
-                        <label for="cryptoCode">Random Functions (getNumberFromRange, getUniqueNumbersFromRange, getHashBySeed):</label>
+                        <label for="cryptoCode">Random Functions (getNumberFromRange, getNumbersFromRange, getUniqueNumbersFromRange, getHashBySeed):</label>
                         <textarea id="cryptoCode" class="code-editor" rows="25"></textarea>
                     </div>
                 </div>
@@ -226,7 +258,7 @@
                 <div id="games" class="function-content">
                     <h3>🎮 Game-Specific Functions</h3>
                     <div class="code-section">
-                        <label for="gamesCode">Game Functions (calculateDiceResult, calculateDoubleResult, etc.):</label>
+                        <label for="gamesCode">Game Functions (calculateDiceResult, calculateDoubleResult, calculateFarmCasesResult, etc.):</label>
                         <textarea id="gamesCode" class="code-editor" rows="25"></textarea>
                     </div>
                 </div>

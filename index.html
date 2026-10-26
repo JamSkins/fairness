@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Provably Fair Calculator</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=202610261644">
 </head>
 <body>
     <div class="container">
@@ -24,7 +24,7 @@
             <button class="tab-button" data-tab="cases">📦 Cases</button>
             <button class="tab-button" data-tab="farm">🌾 Farm Cases</button>
             <button class="tab-button" data-tab="upgrader">🔫 Upgrader</button>
-            <button class="tab-button" data-tab="boss-fight">✦ Boss Fight</button>
+            <button class="tab-button" data-tab="boss-fight">⚔️ Boss Fight</button>
             <button class="tab-button" data-tab="code">📄 Code</button>
         </nav>
 
@@ -222,7 +222,7 @@
         <!-- Boss Fight Calculator -->
         <div id="boss-fight" class="tab-content">
             <div class="game-section">
-                <h2>✦ Boss Fight Fairness Verification</h2>
+                <h2>⚔️ Boss Fight Fairness Verification</h2>
                 <p>One wager buys 8 strikes. They are drawn in order from one stream <code>clientSeed:nonce</code>: each strike draws a number from 0 to 19, and a number below 7 is a hit (7 in 20 = 35%). The rules are the same for every design of the game. The server seed hash is <code>SHA-256(serverSeed)</code>.</p>
                 <form id="bossFightForm" class="fairness-form">
                     <div class="input-group">
@@ -316,7 +316,7 @@
         </div>
     </div>
 
-    <script src="provably-fair.js"></script>
-    <script src="app.js"></script>
+    <script src="provably-fair.js?v=202610261644"></script>
+    <script src="app.js?v=202610261644"></script>
 </body>
 </html>

@@ -410,6 +410,48 @@ async function calculateUpgraderResult(clientSeed, serverSeed, nonce) {
     };
 }
 
+/**
+ * SHA-256 of a string as hex. Boss Fight publishes sha256(serverSeed) as its commitment
+ * (the other games use getHashBySeed).
+ * @param {string} value - Value to hash
+ * @returns {Promise<string>} - Hex hash string
+ */
+async function sha256Hex(value) {
+    if (typeof crypto !== 'undefined' && crypto.subtle) {
+        const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
+        return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+    if (typeof CryptoJS === 'undefined') {
+        await loadCryptoJS();
+    }
+    return CryptoJS.SHA256(value).toString();
+}
+
+/**
+ * Calculate Boss Fight round result (8 strikes, the same for every game design)
+ * Each strike draws a number from 0 to 19 from one stream; below 7 is a hit (7/20 = 35%).
+ * @param {string} clientSeed - Client seed
+ * @param {string} serverSeed - Server seed
+ * @param {number} nonce - Nonce value
+ * @returns {Promise<Object>} - strikes ({ index, roll, hit }[]), hits and hash
+ */
+async function calculateBossFightResult(clientSeed, serverSeed, nonce) {
+    const draw = await createRangeNumberStream({ rng: [0, 19], serverSeed, nonce, clientSeed });
+    const strikes = [];
+    for (let index = 0; index < 8; index += 1) {
+        const roll = await draw();
+        strikes.push({ index, roll, hit: roll < 7 });
+    }
+    const hits = strikes.filter((strike) => strike.hit).length;
+    const hash = await sha256Hex(serverSeed);
+
+    return {
+        strikes,
+        hits,
+        hash,
+    };
+}
+
 // Make functions available globally
 window.ProvablyFair = {
     calculateDiceResult,
@@ -418,6 +460,8 @@ window.ProvablyFair = {
     calculateCasesResult,
     calculateFarmCasesResult,
     calculateUpgraderResult,
+    calculateBossFightResult,
+    sha256Hex,
     getHashBySeed,
     getNumberFromRange,
     getNumbersFromRange,

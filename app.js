@@ -62,6 +62,10 @@ class ProvablyFairCalculator {
         // Upgrader form
         const upgraderForm = document.getElementById('upgraderForm');
         upgraderForm.addEventListener('submit', (e) => this.handleUpgraderSubmit(e));
+
+        // Boss Fight form
+        const bossFightForm = document.getElementById('bossFightForm');
+        bossFightForm.addEventListener('submit', (e) => this.handleBossFightSubmit(e));
     }
 
     /**
@@ -75,6 +79,7 @@ class ProvablyFairCalculator {
         this.addSampleDataButton('casesForm', this.getCasesSampleData());
         this.addSampleDataButton('farmForm', this.getFarmSampleData());
         this.addSampleDataButton('upgraderForm', this.getUpgraderSampleData());
+        this.addSampleDataButton('bossFightForm', this.getBossFightSampleData());
     }
 
     /**
@@ -111,7 +116,7 @@ class ProvablyFairCalculator {
         shareButton.textContent = '🔗 Share URL';
         
         shareButton.addEventListener('click', () => {
-            const gameType = formId.replace('Form', '');
+            const gameType = formId === 'bossFightForm' ? 'boss-fight' : formId.replace('Form', '');
             const shareURL = this.generateShareableURL(gameType);
             
             // Copy to clipboard
@@ -181,6 +186,14 @@ class ProvablyFairCalculator {
             upgraderClientSeed: 'csgo_player',
             upgraderServerSeed: 'e5f6789012345678901234567890abcdef1234567890abcdef1234567ab2c3d4',
             upgraderNonce: '4'
+        };
+    }
+
+    getBossFightSampleData() {
+        return {
+            bossFightClientSeed: 'boss_player',
+            bossFightServerSeed: 'f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7',
+            bossFightNonce: '5'
         };
     }
 
@@ -349,6 +362,31 @@ class ProvablyFairCalculator {
             this.displayUpgraderResult(result);
         } catch (error) {
             this.displayError('upgraderResult', error.message);
+        } finally {
+            this.setLoading(form, false);
+        }
+    }
+
+    /**
+     * Handle Boss Fight form submission
+     */
+    async handleBossFightSubmit(e) {
+        e.preventDefault();
+        
+        const form = e.target;
+        const clientSeed = form.querySelector('#bossFightClientSeed').value;
+        const serverSeed = form.querySelector('#bossFightServerSeed').value;
+        const nonce = parseInt(form.querySelector('#bossFightNonce').value);
+        
+        if (!this.validateInputs([clientSeed, serverSeed], [nonce])) return;
+        
+        this.setLoading(form, true);
+        
+        try {
+            const result = await window.ProvablyFair.calculateBossFightResult(clientSeed, serverSeed, nonce);
+            this.displayBossFightResult(result);
+        } catch (error) {
+            this.displayError('bossFightResult', error.message);
         } finally {
             this.setLoading(form, false);
         }
@@ -564,6 +602,43 @@ class ProvablyFairCalculator {
             <div class="result-item">
                 <div class="result-label">Upgrade Chance</div>
                 <div class="result-value number">${result.upgradeChance}%</div>
+            </div>
+            <div class="result-item">
+                <div class="result-label">Server Seed Hash</div>
+                <div class="result-value">${result.hash}</div>
+            </div>
+        `;
+        
+        resultSection.classList.add('show');
+        resultSection.classList.remove('error');
+    }
+
+    /**
+     * Display Boss Fight result: neutral hit/miss marks, so it reads the same for every design of the game
+     */
+    displayBossFightResult(result) {
+        const resultSection = document.getElementById('bossFightResult');
+        const strikesHtml = result.strikes
+            .map(({ index, roll, hit }) => `
+                <div class="strike-cell ${hit ? 'hit' : 'miss'}">
+                    <span class="strike-index">#${index + 1}</span>
+                    <span class="strike-mark" aria-hidden="true">${hit ? '●' : '○'}</span>
+                    <span class="strike-label">${hit ? 'Hit' : 'Miss'}</span>
+                    <span class="strike-roll" title="Number drawn for this strike (0–19); below 7 is a hit">${roll} ${hit ? '&lt;' : '&ge;'} 7</span>
+                </div>`)
+            .join('');
+        resultSection.innerHTML = `
+            <div class="result-item">
+                <div class="result-label">Strikes (in order)</div>
+                <div class="strikes-row">${strikesHtml}</div>
+            </div>
+            <div class="result-item">
+                <div class="result-label">Hits</div>
+                <div class="result-value number">${result.hits} / 8</div>
+            </div>
+            <div class="result-item">
+                <div class="result-label">Outcomes (JSON)</div>
+                <div class="result-value">${JSON.stringify(result.strikes.map(({ hit }) => hit))}</div>
             </div>
             <div class="result-item">
                 <div class="result-label">Server Seed Hash</div>
@@ -1055,6 +1130,48 @@ async function calculateUpgraderResult(clientSeed, serverSeed, nonce) {
         upgradeChance: parseFloat(upgradeChance),
         hash,
     };
+}
+
+/**
+ * SHA-256 of a string as hex. Boss Fight publishes sha256(serverSeed) as its commitment
+ * (the other games use getHashBySeed).
+ * @param {string} value - Value to hash
+ * @returns {Promise<string>} - Hex hash string
+ */
+async function sha256Hex(value) {
+    if (typeof crypto !== 'undefined' && crypto.subtle) {
+        const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
+        return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+    if (typeof CryptoJS === 'undefined') {
+        await loadCryptoJS();
+    }
+    return CryptoJS.SHA256(value).toString();
+}
+
+/**
+ * Calculate Boss Fight round result (8 strikes, the same for every game design)
+ * Each strike draws a number from 0 to 19 from one stream; below 7 is a hit (7/20 = 35%).
+ * @param {string} clientSeed - Client seed
+ * @param {string} serverSeed - Server seed
+ * @param {number} nonce - Nonce value
+ * @returns {Promise<Object>} - strikes ({ index, roll, hit }[]), hits and hash
+ */
+async function calculateBossFightResult(clientSeed, serverSeed, nonce) {
+    const draw = await createRangeNumberStream({ rng: [0, 19], serverSeed, nonce, clientSeed });
+    const strikes = [];
+    for (let index = 0; index < 8; index += 1) {
+        const roll = await draw();
+        strikes.push({ index, roll, hit: roll < 7 });
+    }
+    const hits = strikes.filter((strike) => strike.hit).length;
+    const hash = await sha256Hex(serverSeed);
+
+    return {
+        strikes,
+        hits,
+        hash,
+    };
 }`;
     }
 
@@ -1090,7 +1207,7 @@ async function calculateUpgraderResult(clientSeed, serverSeed, nonce) {
         const [tab, params] = hash.split('?');
         
         // Switch to tab if specified
-        if (tab && ['dice', 'double', 'mines', 'cases', 'farm', 'upgrader', 'code'].includes(tab)) {
+        if (tab && ['dice', 'double', 'mines', 'cases', 'farm', 'upgrader', 'boss-fight', 'code'].includes(tab)) {
             this.switchToTab(tab, false); // Don't update URL to avoid loop
         }
         
@@ -1163,6 +1280,9 @@ async function calculateUpgraderResult(clientSeed, serverSeed, nonce) {
                     break;
                 case 'upgrader':
                     this.fillUpgraderForm(params);
+                    break;
+                case 'boss-fight':
+                    this.fillBossFightForm(params);
                     break;
             }
         } catch (error) {
@@ -1259,6 +1379,19 @@ async function calculateUpgraderResult(clientSeed, serverSeed, nonce) {
     }
 
     /**
+     * Fill Boss Fight form from URL parameters
+     */
+    fillBossFightForm(params) {
+        const clientSeed = params.get('clientSeed');
+        const serverSeed = params.get('serverSeed');
+        const nonce = params.get('nonce');
+        
+        if (clientSeed) document.getElementById('bossFightClientSeed').value = clientSeed;
+        if (serverSeed) document.getElementById('bossFightServerSeed').value = serverSeed;
+        if (nonce) document.getElementById('bossFightNonce').value = nonce;
+    }
+
+    /**
      * Get form parameters as URL search string
      */
     getFormParams(tab) {
@@ -1335,6 +1468,16 @@ async function calculateUpgraderResult(clientSeed, serverSeed, nonce) {
                     if (upgraderServerSeed) params.set('serverSeed', upgraderServerSeed);
                     if (upgraderNonce) params.set('nonce', upgraderNonce);
                     break;
+                    
+                case 'boss-fight':
+                    const bossFightClientSeed = document.getElementById('bossFightClientSeed').value;
+                    const bossFightServerSeed = document.getElementById('bossFightServerSeed').value;
+                    const bossFightNonce = document.getElementById('bossFightNonce').value;
+                    
+                    if (bossFightClientSeed) params.set('clientSeed', bossFightClientSeed);
+                    if (bossFightServerSeed) params.set('serverSeed', bossFightServerSeed);
+                    if (bossFightNonce) params.set('nonce', bossFightNonce);
+                    break;
             }
             
             return params.toString();
@@ -1388,6 +1531,8 @@ function updateFunctions() {
                 calculateCasesResult,
                 calculateFarmCasesResult,
                 calculateUpgraderResult,
+                calculateBossFightResult,
+                sha256Hex,
                 getHashBySeed,
                 getNumberFromRange,
                 getNumbersFromRange,
@@ -1446,6 +1591,8 @@ window.ProvablyFair = {
     calculateCasesResult,
     calculateFarmCasesResult,
     calculateUpgraderResult,
+    calculateBossFightResult,
+    sha256Hex,
     getHashBySeed,
     getNumberFromRange,
     getNumbersFromRange,

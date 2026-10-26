@@ -13,7 +13,7 @@
             <p>Verify the fairness of game results using cryptographic proofs</p>
             <div class="url-info">
                 <small>💡 <strong>Tip:</strong> Share your calculations with others using URLs! Use 🔗 Share URL button or access directly: 
-                <code>#dice</code>, <code>#double</code>, <code>#mines</code>, <code>#cases</code>, <code>#farm</code>, <code>#upgrader</code>, <code>#code</code></small>
+                <code>#dice</code>, <code>#double</code>, <code>#mines</code>, <code>#cases</code>, <code>#farm</code>, <code>#upgrader</code>, <code>#boss-fight</code>, <code>#code</code></small>
             </div>
         </header>
 
@@ -24,6 +24,7 @@
             <button class="tab-button" data-tab="cases">📦 Cases</button>
             <button class="tab-button" data-tab="farm">🌾 Farm Cases</button>
             <button class="tab-button" data-tab="upgrader">🔫 Upgrader</button>
+            <button class="tab-button" data-tab="boss-fight">✦ Boss Fight</button>
             <button class="tab-button" data-tab="code">📄 Code</button>
         </nav>
 
@@ -218,6 +219,30 @@
             </div>
         </div>
 
+        <!-- Boss Fight Calculator -->
+        <div id="boss-fight" class="tab-content">
+            <div class="game-section">
+                <h2>✦ Boss Fight Fairness Verification</h2>
+                <p>One wager buys 8 strikes. They are drawn in order from one stream <code>clientSeed:nonce</code>: each strike draws a number from 0 to 19, and a number below 7 is a hit (7 in 20 = 35%). The rules are the same for every design of the game. The server seed hash is <code>SHA-256(serverSeed)</code>.</p>
+                <form id="bossFightForm" class="fairness-form">
+                    <div class="input-group">
+                        <label for="bossFightClientSeed">Client Seed:</label>
+                        <input type="text" id="bossFightClientSeed" placeholder="Enter client seed" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="bossFightServerSeed">Server Seed:</label>
+                        <input type="text" id="bossFightServerSeed" placeholder="Enter server seed" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="bossFightNonce">Nonce:</label>
+                        <input type="number" id="bossFightNonce" placeholder="Enter nonce" min="0" step="1" required>
+                    </div>
+                    <button type="submit" class="calculate-btn">Calculate Strikes</button>
+                </form>
+                <div id="bossFightResult" class="result-section"></div>
+            </div>
+        </div>
+
         <!-- Code Editor -->
         <div id="code" class="tab-content">
             <div class="game-section">
@@ -258,7 +283,7 @@
                 <div id="games" class="function-content">
                     <h3>🎮 Game-Specific Functions</h3>
                     <div class="code-section">
-                        <label for="gamesCode">Game Functions (calculateDiceResult, calculateDoubleResult, calculateFarmCasesResult, etc.):</label>
+                        <label for="gamesCode">Game Functions (calculateDiceResult, calculateDoubleResult, calculateFarmCasesResult, calculateBossFightResult, etc.):</label>
                         <textarea id="gamesCode" class="code-editor" rows="25"></textarea>
                     </div>
                 </div>
